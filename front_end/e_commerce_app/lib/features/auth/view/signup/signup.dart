@@ -2,7 +2,10 @@ import 'package:e_commerce_app/constants/primary_button.dart';
 import 'package:e_commerce_app/constants/social_icon_button.dart';
 import 'package:e_commerce_app/features/auth/common_feature/fields.dart';
 import 'package:e_commerce_app/features/auth/services/social_auth_service.dart';
+import 'package:e_commerce_app/services/authservice.dart';
+import 'package:e_commerce_app/routes/routernames.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -21,6 +24,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final bool _obscureConfirmPassword = true;
 
   final SocialAuthService _socialAuthService = const SocialAuthService();
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -30,14 +34,38 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  void _onCreateAccount() {
-    if (_formKey.currentState?.validate() ?? false) {
-      // TODO: Hook up with your backend signup logic.
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Create account tapped')),
-      );
+  
+    void _onCreateAccount() async {
+      if (_formKey.currentState?.validate() ?? false) {
+
+        try {
+          final result = await _authService.registerUser(
+            _emailController.text.trim(), // name (temporary if no name field)
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
+          );
+
+          if (result['_id'] != null) {
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Account created successfully')),
+            );
+
+            context.go(RouteNames.signin);
+
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(result['message'] ?? 'Error occurred')),
+            );
+          }
+
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString())),
+          );
+        }
+      }
     }
-  }
 
   Future<void> _onSocialSignIn(SocialProvider provider) async {
     await _socialAuthService.signInWith(provider);
@@ -166,7 +194,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   GestureDetector(
                     onTap: () {
-                      // TODO: Navigate to login screen.
+                      context.go(RouteNames.signin);
                     },
                     child: const Text(
                       'Login',

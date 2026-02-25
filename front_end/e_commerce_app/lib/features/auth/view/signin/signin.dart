@@ -3,7 +3,9 @@ import 'package:e_commerce_app/constants/social_icon_button.dart';
 import 'package:e_commerce_app/features/auth/common_feature/fields.dart';
 import 'package:e_commerce_app/features/auth/services/social_auth_service.dart';
 import 'package:e_commerce_app/features/auth/view/signup/signup.dart';
+import 'package:e_commerce_app/services/authservice.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // for storing token
 
 class SigninScreen extends StatefulWidget {
   const SigninScreen({super.key});
@@ -18,6 +20,8 @@ class _SigninScreenState extends State<SigninScreen> {
   final _passwordController = TextEditingController();
 
   final SocialAuthService _socialAuthService = const SocialAuthService();
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -26,12 +30,40 @@ class _SigninScreenState extends State<SigninScreen> {
     super.dispose();
   }
 
-  void _onLogin() {
+  void _onLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // TODO: Hook up with your backend login logic.
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login tapped')),
-      );
+      setState(() => _isLoading = true);
+
+      try {
+        final result = await _authService.loginUser(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+
+        if (result['token'] != null) {
+          // Save JWT token locally
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', result['token']);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login Successful')),
+          );
+
+          // TODO: Navigate to Home Screen
+          // context.go(RouteNames.home);
+
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Email or password is incorrect')),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+
+      setState(() => _isLoading = false);
     }
   }
 
@@ -111,8 +143,8 @@ class _SigninScreenState extends State<SigninScreen> {
               ),
               const SizedBox(height: 24),
               PrimaryButton(
-                text: 'Login',
-                onPressed: _onLogin,
+                text: _isLoading ? 'Loading...' : 'Login',
+                onPressed: _isLoading ? null : _onLogin,
               ),
               const SizedBox(height: 24),
               const Center(
