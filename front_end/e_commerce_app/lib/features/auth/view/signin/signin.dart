@@ -3,8 +3,10 @@ import 'package:e_commerce_app/constants/social_icon_button.dart';
 import 'package:e_commerce_app/features/auth/common_feature/fields.dart';
 import 'package:e_commerce_app/features/auth/services/social_auth_service.dart';
 import 'package:e_commerce_app/features/auth/view/signup/signup.dart';
+import 'package:e_commerce_app/routes/routernames.dart';
 import 'package:e_commerce_app/services/authservice.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // for storing token
 
 class SigninScreen extends StatefulWidget {
@@ -49,8 +51,7 @@ class _SigninScreenState extends State<SigninScreen> {
             const SnackBar(content: Text('Login Successful')),
           );
 
-          // TODO: Navigate to Home Screen
-          // context.go(RouteNames.home);
+          if (context.mounted) context.go(RouteNames.home);
 
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

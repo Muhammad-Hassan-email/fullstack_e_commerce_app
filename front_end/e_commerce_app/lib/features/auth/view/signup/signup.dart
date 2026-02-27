@@ -15,6 +15,13 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _stateController = TextEditingController();
+  final _countryController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -28,6 +35,11 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    _countryController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -40,7 +52,13 @@ class _SignupScreenState extends State<SignupScreen> {
 
         try {
           final result = await _authService.registerUser(
-            _emailController.text.trim(), // name (temporary if no name field)
+            _firstNameController.text.trim(),
+            _lastNameController.text.trim(),
+            _phoneController.text.trim(),
+            _addressController.text.trim(),
+            _cityController.text.trim(),
+            _stateController.text.trim(),
+            _countryController.text.trim(),
             _emailController.text.trim(),
             _passwordController.text.trim(),
           );
@@ -94,8 +112,99 @@ class _SignupScreenState extends State<SignupScreen> {
                 child: Column(
                   children: [
                     AppTextField(
+                      controller: _firstNameController,
+                      hintText: 'First Name',
+                      prefixIcon: Icons.person,
+                      keyboardType: TextInputType.text,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your First Name';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    AppTextField(
+                      controller: _lastNameController,
+                      hintText: 'Last Name',
+                      prefixIcon: Icons.person,
+                      keyboardType: TextInputType.text,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your Last Name';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16), 
+                    AppTextField(
+                      controller: _phoneController,
+                      hintText: 'Phone',
+                      prefixIcon: Icons.phone,
+                      keyboardType: TextInputType.phone,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your Phone';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    AppTextField(
+                      controller: _addressController,
+                      hintText: 'Address',
+                      prefixIcon: Icons.location_on,
+                      keyboardType: TextInputType.text,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your Address';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    AppTextField(
+                      controller: _cityController,
+                      hintText: 'City',
+                      prefixIcon: Icons.location_city,
+                      keyboardType: TextInputType.text,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your City';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    AppTextField(
+                      controller: _stateController,
+                      hintText: 'State',
+                      prefixIcon: Icons.location_on,
+                      keyboardType: TextInputType.text,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your State';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    AppTextField(
+                      controller: _countryController,
+                      hintText: 'Country',
+                      prefixIcon: Icons.location_on,
+                      keyboardType: TextInputType.text,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your Country';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    AppTextField(
                       controller: _emailController,
-                      hintText: 'Username or Email',
+                      hintText: 'Email',
                       prefixIcon: Icons.person,
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
