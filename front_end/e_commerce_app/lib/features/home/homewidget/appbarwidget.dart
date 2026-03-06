@@ -6,6 +6,8 @@ class CustomSliverAppBar extends StatelessWidget {
   final String? title;
   final VoidCallback? onMenuTap;
   final VoidCallback? onProfileTap;
+  final VoidCallback? onCartTap;  // ✅ add
+  final int cartCount;            // ✅ add
   final String logoPath;
 
   const CustomSliverAppBar({
@@ -15,6 +17,8 @@ class CustomSliverAppBar extends StatelessWidget {
     this.title,
     this.onMenuTap,
     this.onProfileTap,
+    this.onCartTap,               // ✅ add
+    this.cartCount = 0,           // ✅ add
     required this.logoPath,
   });
 
@@ -26,12 +30,9 @@ class CustomSliverAppBar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-
-            /// Left Button (Menu OR Back)
+            // ✅ Left - Back or Menu
             IconButton(
-              icon: Icon(
-                showBackButton ? Icons.arrow_back : Icons.menu,
-              ),
+              icon: Icon(showBackButton ? Icons.arrow_back : Icons.menu),
               onPressed: () {
                 if (showBackButton) {
                   Navigator.pop(context);
@@ -41,7 +42,7 @@ class CustomSliverAppBar extends StatelessWidget {
               },
             ),
 
-            /// Center (Logo OR Title)
+            // ✅ Center - Logo or Title
             Expanded(
               child: Center(
                 child: title != null
@@ -53,20 +54,47 @@ class CustomSliverAppBar extends StatelessWidget {
                           color: Color(0xFF2196F3),
                         ),
                       )
-                    : Image.asset(
-                        logoPath,
-                        height: 35,
-                      ),
+                    : Image.asset(logoPath, height: 35),
               ),
             ),
 
-            /// Right Side (Profile optional)
-            showProfileIcon
-                ? IconButton(
-                    icon: const Icon(Icons.person_outline),
-                    onPressed: onProfileTap,
-                  )
-                : const SizedBox(width: 48), // keeps alignment balanced
+            // ✅ Right - Cart with badge OR Profile
+            if (onCartTap != null)
+              Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart_outlined),
+                    onPressed: onCartTap,
+                  ),
+                  if (cartCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFE24A69),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '$cartCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              )
+            else if (showProfileIcon)
+              IconButton(
+                icon: const Icon(Icons.person_outline),
+                onPressed: onProfileTap,
+              )
+            else
+              const SizedBox(width: 48),
           ],
         ),
       ),

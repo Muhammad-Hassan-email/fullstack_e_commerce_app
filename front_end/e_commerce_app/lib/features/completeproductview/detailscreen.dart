@@ -1,8 +1,16 @@
+import 'package:e_commerce_app/constants/primary_button.dart';
+import 'package:e_commerce_app/features/home/homewidget/appbarwidget.dart';
 import 'package:e_commerce_app/features/home/product/productmodel.dart';
+import 'package:e_commerce_app/features/wishlist/wishlistprovider/wishlistprovider.dart';
+import 'package:e_commerce_app/routes/routernames.dart';
 import 'package:flutter/material.dart';
+import 'package:e_commerce_app/features/cart/provider/cartprovider.dart';
+import 'package:e_commerce_app/features/home/product/productprovider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class DetailScreen extends StatefulWidget {
-  final ProductModel? product;
+  final Product? product;
 
   const DetailScreen({super.key, this.product});
 
@@ -17,7 +25,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
   final PageController _pageController = PageController();
   int _activeImageIndex = 0;
-  int _selectedSizeIndex = 1;
+  int _selectedSizeIndex = 0;
   bool _detailsExpanded = false;
 
   late final List<String> _images;
@@ -25,13 +33,12 @@ class _DetailScreenState extends State<DetailScreen> {
   @override
   void initState() {
     super.initState();
-
     final product = widget.product;
     _images = [
-      if (product?.image case final String url when url.trim().isNotEmpty) url,
+      if (product?.imageUrl != null && product!.imageUrl.trim().isNotEmpty)
+        product.imageUrl,
       'assets/banner_2.jpg',
       'assets/banner_3.jpg',
-      'assets/banner_4.jpg',
     ];
   }
 
@@ -42,7 +49,7 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   void _goToImage(int index) {
-    if (!mounted) return;
+    if (!mounted || _images.isEmpty) return;
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 260),
@@ -53,311 +60,404 @@ class _DetailScreenState extends State<DetailScreen> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-    final title = product?.title ?? 'Nike Sneakers';
-    final subtitle = "Vision Alta Men’s Shoes Size (All Colours)";
-    final rating = 4.2;
-    final ratingCount = 56890;
 
-    final originalPrice = 2999.0;
-    final salePrice = product?.price ?? 1500.0;
-    final discountPct = 50;
+    // ✅ All dynamic
+    final title = product?.name ?? 'Product';
+    final subtitle = product?.description ?? '';
+    final rating = product?.rating ?? 0.0;
+    final ratingCount = product?.stock ?? 0;
+    final salePrice = product?.price ?? 0.0;
+    // ✅ Parse discount string e.g "10%" → 10
+    final discountPct = int.tryParse(
+          (product?.discount ?? '0').replaceAll('%', '').trim(),
+        ) ?? 0;
+    // ✅ Calculate original price from discount
+    final originalPrice = discountPct > 0
+        ? salePrice / (1 - discountPct / 100)
+        : salePrice;
 
-    final sizes = const ['6 UK', '7 UK', '8 UK', '9 UK', '10 UK'];
+    final sizes = (product?.variations.isNotEmpty == true)
+        ? product!.variations
+        : ['Default'];
+
+    // ✅ Similar products from same category
+    final similarProducts = context
+        .watch<ProductProvider>()
+        .products
+        .where((p) =>
+            p.category == product?.category && p.id != product?.id)
+        .take(4)
+        .toList();
 
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            _TopBar(
-              onBack: () => Navigator.of(context).maybePop(),
-              onCart: () {},
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _ImageCarousel(
-                      controller: _pageController,
-                      images: _images,
-                      activeIndex: _activeImageIndex,
-                      onPageChanged: (i) => setState(() => _activeImageIndex = i),
-                      onNext: () => _goToImage((_activeImageIndex + 1) % _images.length),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Size: ${sizes[_selectedSizeIndex].replaceAll(' ', '')}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
+        child: CustomScrollView(
+          slivers: [
+            CustomSliverAppBar(
+          logoPath: 'assets/app_logo.png',  // ✅ your logo asset
+          showBackButton: true,
+          onCartTap: () {
+            if (context.read<CartProvider>().items.isNotEmpty) {
+              context.push(RouteNames.checkout); // ✅ GoRouter not pushNamed
+            }
+          },
+          cartCount: context.watch<CartProvider>().itemCount,
+        ),
+            SliverToBoxAdapter(
+              child: Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ImageCarousel(
+                        controller: _pageController,
+                        images: _images,
+                        activeIndex: _activeImageIndex,
+                        onPageChanged: (i) =>
+                            setState(() => _activeImageIndex = i),
+                        onNext: () => _goToImage(
+                          (_activeImageIndex + 1) % _images.length,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        for (var i = 0; i < sizes.length; i++)
-                          _SizeChip(
-                            label: sizes[i],
-                            selected: i == _selectedSizeIndex,
-                            accent: _accent,
-                            onTap: () => setState(() => _selectedSizeIndex = i),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
+                      const SizedBox(height: 14),
+              
+                      // ✅ Dynamic size label
+                      Text(
+                        sizes.isNotEmpty
+                            ? 'Size: ${sizes[_selectedSizeIndex].replaceAll(' ', '')}'
+                            : 'Size: N/A',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: _textMuted,
-                        height: 1.25,
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          for (var i = 0; i < sizes.length; i++)
+                            _SizeChip(
+                              label: sizes[i],
+                              selected: i == _selectedSizeIndex,
+                              accent: _accent,
+                              onTap: () =>
+                                  setState(() => _selectedSizeIndex = i),
+                            ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _RatingStars(value: rating),
-                        const SizedBox(width: 8),
-                        Text(
-                          rating.toStringAsFixed(1),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                          ),
+                      const SizedBox(height: 14),
+              
+                      // ✅ Dynamic title
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '($ratingCount)',
-                          style: const TextStyle(
-                            color: _textMuted,
-                            fontSize: 13,
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+              
+                      // ✅ Dynamic description as subtitle
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: _textMuted,
+                          height: 1.25,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '₹${originalPrice.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: _textMuted,
-                            decoration: TextDecoration.lineThrough,
-                            decorationThickness: 2,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '₹${salePrice.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _accent.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '$discountPct% Off',
+                      ),
+                      const SizedBox(height: 10),
+              
+                      // ✅ Dynamic rating
+                      Row(
+                        children: [
+                          _RatingStars(value: rating),
+                          const SizedBox(width: 8),
+                          Text(
+                            rating.toStringAsFixed(1),
                             style: const TextStyle(
-                              color: _accent,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Product Details',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _ExpandableText(
-                      text:
-                          "Perhaps the most iconic sneaker of all-time, this original "
-                          "\"Chicago\" colorway is the most important one ever made. "
-                          "Made famous in 1985 by Michael Jordan, the shoe has stood "
-                          "the test of time, becoming the most famous colorway of the "
-                          "Air Jordan 1. This 2015 release saw the ...",
-                      expanded: _detailsExpanded,
-                      onToggle: () => setState(() => _detailsExpanded = !_detailsExpanded),
-                      accent: _accent,
-                    ),
-                    const SizedBox(height: 14),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: const [
-                        _MiniPill(icon: Icons.store_mall_directory_outlined, label: 'Nearest Store'),
-                        _MiniPill(icon: Icons.workspace_premium_outlined, label: 'VIP'),
-                        _MiniPill(icon: Icons.assignment_return_outlined, label: 'Return policy'),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _PrimaryButton(
-                            label: 'Go to cart',
-                            icon: Icons.shopping_cart_outlined,
-                            background: const Color(0xFF3B82F6),
-                            onTap: () {},
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _PrimaryButton(
-                            label: 'Buy Now',
-                            icon: Icons.shopping_bag_outlined,
-                            background: const Color(0xFF22C55E),
-                            onTap: () {},
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _accent.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: _accent.withValues(alpha: 0.25)),
-                      ),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.local_shipping_outlined, color: _accent),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Delivery in\n1 within 1 Hour',
-                              style: TextStyle(fontWeight: FontWeight.w800, height: 1.1),
+                          const SizedBox(width: 8),
+                          Text(
+                            '($ratingCount)',
+                            style: const TextStyle(
+                              color: _textMuted,
+                              fontSize: 13,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _SecondaryButton(
-                            label: 'View Similar',
-                            icon: Icons.remove_red_eye_outlined,
+                      const SizedBox(height: 10),
+              
+                      // ✅ Dynamic price with discount
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (discountPct > 0) ...[
+                            Text(
+                              '\$${originalPrice.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: _textMuted,
+                                decoration: TextDecoration.lineThrough,
+                                decorationThickness: 2,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Text(
+                            '\$${salePrice.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          if (discountPct > 0) ...[
+                            const SizedBox(width: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _accent.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '$discountPct% Off',
+                                style: const TextStyle(
+                                  color: _accent,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+              
+                      const Text(
+                        'Product Details',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+              
+                      // ✅ Dynamic description in expandable text
+                      _ExpandableText(
+                        text: subtitle.isNotEmpty
+                            ? subtitle
+                            : 'No description available.',
+                        expanded: _detailsExpanded,
+                        onToggle: () => setState(
+                          () => _detailsExpanded = !_detailsExpanded,
+                        ),
+                        accent: _accent,
+                      ),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: const [
+                          _MiniPill(
+                            icon: Icons.store_mall_directory_outlined,
+                            label: 'Nearest Store',
+                          ),
+                          _MiniPill(
+                            icon: Icons.workspace_premium_outlined,
+                            label: 'VIP',
+                          ),
+                          _MiniPill(
+                            icon: Icons.assignment_return_outlined,
+                            label: 'Return policy',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+              
+                      // ✅ Add to Cart + Add to Wishlist buttons wired up
+                      Row(
+                        children: [
+                          Expanded(
+                            child: PrimaryButton(
+                              text: 'Add To Cart',
+                              onPressed: () {
+                                if (product != null) {
+                                  context.read<CartProvider>().addToCart(
+                                    product,
+                                    size: sizes[_selectedSizeIndex],
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Added to cart!'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: PrimaryButton(
+                              text: 'Add To Wishlist', // ✅ fixed label
+                              onPressed: () {
+                                if (product != null) {
+                                  context
+                                      .read<WishlistProvider>()
+                                      .toggleWishlist(product);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Added to wishlist!'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _accent.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: _accent.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.local_shipping_outlined,
+                              color: _accent,
+                            ),
+                            const SizedBox(width: 10),
+                            // ✅ Dynamic stock info
+                            Expanded(
+                              child: Text(
+                                product?.stock != null && product!.stock > 0
+                                    ? 'In Stock: ${product.stock} items\nDelivery within 1 Hour'
+                                    : 'Out of Stock',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _SecondaryButton(
+                              label: 'View Similar',
+                              icon: Icons.remove_red_eye_outlined,
+                              onTap: () {},
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _SecondaryButton(
+                              label: 'Add to Compare',
+                              icon: Icons.compare_arrows_outlined,
+                              onTap: () {},
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+              
+                      // ✅ Dynamic similar products count
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Similar To\n${similarProducts.length}+ Items',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                          _SquareIconButton(icon: Icons.sort, onTap: () {}),
+                          const SizedBox(width: 10),
+                          _SquareIconButton(
+                            icon: Icons.filter_alt_outlined,
                             onTap: () {},
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _SecondaryButton(
-                            label: 'Add to Compare',
-                            icon: Icons.compare_arrows_outlined,
-                            onTap: () {},
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Similar To\n282+ Items',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, height: 1.1),
-                          ),
-                        ),
-                        _SquareIconButton(icon: Icons.sort, onTap: () {}),
-                        const SizedBox(width: 10),
-                        _SquareIconButton(icon: Icons.filter_alt_outlined, onTap: () {}),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: const [
-                        Expanded(
-                          child: _SimilarCard(
-                            image: 'assets/banner_3.jpg',
-                            title: 'Nike Sneakers',
-                            subtitle: 'Nike Air Jordan Retro 1 Low Mystic Black',
-                            price: 1900,
-                            originalPrice: 2680,
-                            rating: 4.5,
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: _SimilarCard(
-                            image: 'assets/banner_4.jpg',
-                            title: 'Nike Sneakers',
-                            subtitle: 'Mid Peach Mocha Shoes For Man White Black Pink',
-                            price: 1900,
-                            originalPrice: 2680,
-                            rating: 4.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+              
+                      // ✅ Dynamic similar products
+                      similarProducts.isEmpty
+                          ? const Text(
+                              'No similar products found',
+                              style: TextStyle(color: _textMuted),
+                            )
+                          : GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: similarProducts.length,
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 0.72,
+                              ),
+                              itemBuilder: (context, index) {
+                                final similar = similarProducts[index];
+                                return GestureDetector(
+                                  onTap: () {
+                                    // ✅ Navigate to detail of similar product
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            DetailScreen(product: similar),
+                                      ),
+                                    );
+                                  },
+                                  child: _SimilarCard(
+                                    image: similar.imageUrl,
+                                    title: similar.name,
+                                    subtitle: similar.description,
+                                    price: similar.price,
+                                    originalPrice: similar.price,
+                                    rating: similar.rating,
+                                  ),
+                                );
+                              },
+                            ),
+                      const SizedBox(height: 28),
+                    ],
+                  ),
                 ),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _TopBar extends StatelessWidget {
-  final VoidCallback onBack;
-  final VoidCallback onCart;
-
-  const _TopBar({
-    required this.onBack,
-    required this.onCart,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: onBack,
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          ),
-          const Spacer(),
-          IconButton(
-            onPressed: onCart,
-            icon: const Icon(Icons.shopping_cart_outlined),
-          ),
-        ],
       ),
     );
   }
@@ -396,22 +496,26 @@ class _ImageCarousel extends StatelessWidget {
                 onPageChanged: onPageChanged,
                 itemBuilder: (context, index) {
                   final src = images[index];
-                  final isNetwork = src.startsWith('http://') || src.startsWith('https://');
+                  final isNetwork =
+                      src.startsWith('http://') || src.startsWith('https://');
 
-                  final image = isNetwork
-                      ? Image.network(
-                          src,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Center(child: Icon(Icons.broken_image_outlined));
-                          },
-                        )
-                      : Image.asset(
-                          src,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                        );
+                  final image =
+                      isNetwork
+                          ? Image.network(
+                            src,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(
+                                child: Icon(Icons.broken_image_outlined),
+                              );
+                            },
+                          )
+                          : Image.asset(
+                            src,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          );
 
                   return Stack(
                     fit: StackFit.expand,
@@ -464,9 +568,10 @@ class _ImageCarousel extends StatelessWidget {
                       height: 7,
                       width: i == activeIndex ? 20 : 7,
                       decoration: BoxDecoration(
-                        color: i == activeIndex
-                            ? const Color(0xFFE24A69)
-                            : Colors.white.withValues(alpha: 0.75),
+                        color:
+                            i == activeIndex
+                                ? const Color(0xFFE24A69)
+                                : Colors.white.withValues(alpha: 0.75),
                         borderRadius: BorderRadius.circular(99),
                       ),
                     ),
@@ -538,7 +643,9 @@ class _RatingStars extends StatelessWidget {
           Icon(
             i < full
                 ? Icons.star_rounded
-                : (i == full && half ? Icons.star_half_rounded : Icons.star_border_rounded),
+                : (i == full && half
+                    ? Icons.star_half_rounded
+                    : Icons.star_border_rounded),
             size: 18,
             color: const Color(0xFFF59E0B),
           ),
@@ -562,7 +669,11 @@ class _ExpandableText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = const TextStyle(color: Color(0xFF374151), height: 1.35, fontSize: 13);
+    final style = const TextStyle(
+      color: Color(0xFF374151),
+      height: 1.35,
+      fontSize: 13,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -572,7 +683,10 @@ class _ExpandableText extends StatelessWidget {
           children: [
             AnimatedCrossFade(
               duration: const Duration(milliseconds: 200),
-              crossFadeState: expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              crossFadeState:
+                  expanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
               firstChild: Text(
                 trimmed,
                 maxLines: 3,
@@ -629,57 +743,6 @@ class _MiniPill extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PrimaryButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color background;
-  final VoidCallback onTap;
-
-  const _PrimaryButton({
-    required this.label,
-    required this.icon,
-    required this.background,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: background.withValues(alpha: 0.28),
-              blurRadius: 14,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -813,21 +876,35 @@ class _SimilarCard extends StatelessWidget {
                   subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), height: 1.25),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF6B7280),
+                    height: 1.25,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.star_rounded, size: 16, color: Color(0xFFF59E0B)),
+                    const Icon(
+                      Icons.star_rounded,
+                      size: 16,
+                      color: Color(0xFFF59E0B),
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       rating.toStringAsFixed(1),
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
                     ),
                     const Spacer(),
                     Text(
                       '₹${price.toStringAsFixed(0)}',
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),

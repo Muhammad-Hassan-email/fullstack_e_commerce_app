@@ -30,7 +30,7 @@ class ThirdSplashScreen extends StatelessWidget {
               HeaderWidget(
                 step: 3,
                 imagePath: 'assets/image_1.png',
-                onSkip: () {
+                onSkip: onSkip ?? () {
                   print('Skip third screen');
                 },
               ),
@@ -39,6 +39,7 @@ class ThirdSplashScreen extends StatelessWidget {
                 title: 'Get Your Order',
                 description: 'Amet minim mollit non deserunt ullamco est sit aliqua dolor do amet sint. Velit officia consequat duis enim velit mollit.',
               ),
+              const Spacer(),
               FooterWidget(
                 currentPage: 0,
                 totalPages: 3,

@@ -51,7 +51,7 @@ class _SigninScreenState extends State<SigninScreen> {
             const SnackBar(content: Text('Login Successful')),
           );
 
-          if (context.mounted) context.go(RouteNames.home);
+          if (context.mounted) context.go(RouteNames.navbar);
 
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

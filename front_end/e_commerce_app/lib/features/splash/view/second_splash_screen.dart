@@ -30,23 +30,16 @@ class SecondSplashScreen extends StatelessWidget {
               HeaderWidget(
                 step: 2,
                 imagePath: 'assets/image_1.png',
-                onSkip: () {
+                onSkip: onSkip ?? () {
                   print('Skip third screen');
                 },
               ),
-              const SizedBox(height: 24),
-              // Expanded(
-              //   flex: 3,
-              //   child: Padding(
-              //     padding: const EdgeInsets.symmetric(horizontal: 24),
-              //     child: Image.asset('assets/images/onboarding_2.png'),
-              //   ),
-              // ),
               const SizedBox(height: 32),
               ContentWidget(
                 title: 'Make Payment',
                 description: 'Amet minim mollit non deserunt ullamco est sit aliqua dolor do amet sint. Velit officia consequat duis enim velit mollit.',
               ),
+              const Spacer(),
               FooterWidget(
                 currentPage: 0,
                 totalPages: 3,

@@ -29,7 +29,7 @@ class FirstSplashScreen extends StatelessWidget {
               HeaderWidget(
                 step: 1,
                 imagePath: 'assets/image_1.png',
-                onSkip: () {
+                onSkip: onSkip ?? () {
                   print('Skip third screen');
                 },
               ),
@@ -39,16 +39,17 @@ class FirstSplashScreen extends StatelessWidget {
                 description: 'Amet minim mollit non deserunt ullamco est sit aliqua dolor do amet sint. Velit officia consequat duis enim velit mollit.',
               ),
               const SizedBox(height: 25),
+              const Spacer(),
               FooterWidget(
-                currentPage: 0,
-                totalPages: 3,
-                onPrev: onSkip ?? () {
-                  print('Skip tapped');
-                },
-                onNext: onNext ?? () {
-                  print('Next tapped');
-                },
-              ),
+                  currentPage: 0,
+                  totalPages: 3,
+                  onPrev: onSkip ?? () {
+                    print('Skip tapped');
+                  },
+                  onNext: onNext ?? () {
+                    print('Next tapped');
+                  },
+                ),
             ],
           ),
         ),

@@ -20,6 +20,9 @@ const productSchema = new mongoose.Schema(
     imageUrl: {
       type: String, // Link to product image
     },
+    variations: {type: String},   // ← add
+    rating: {type: Number},         // ← add
+    discount: {type: String},
     stock: {
       type: Number,
       default: 0,
